@@ -30,6 +30,7 @@ func (s *server) run(ctx context.Context) error {
 	mux.HandleFunc("/healthz", s.handleHealth)
 	mux.HandleFunc("/waveform", s.requireAuth(s.handleWaveform))
 	mux.HandleFunc("/version", s.requireAuth(s.handleVersion))
+	mux.HandleFunc("/album-mtimes", s.requireAuth(s.handleAlbumMTimes))
 
 	srv := &http.Server{
 		Addr:              s.cfg.BindAddress,
@@ -145,6 +146,69 @@ func (s *server) handleWaveform(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 	w.Header().Set("X-Cordata-Cache", "miss")
 	_ = json.NewEncoder(w).Encode(wf)
+}
+
+// handleAlbumMTimes returns the max file-mtime per album directory under
+// `audio_dir`. "Album directory" = the parent directory of an audio file,
+// which is the conventional layout (one album per folder). For each such
+// directory we report `max(mtime)` across its audio files — the moment
+// the album's metadata was most recently touched.
+//
+// Cordata uses this to drive the "Last Modified" sort in Library view —
+// the audiophile-tagging-pass use case where users edit FLAC tags via
+// Mp3tag / Tag Editor and want the changed albums to bubble to the top.
+//
+// Returns: `[{"path": "/srv/music/Album", "mtime": 1719072000}, ...]`.
+// Path is the album directory (absolute, server-side); mtime is unix
+// seconds.
+func (s *server) handleAlbumMTimes(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodGet {
+		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+	rootAbs, err := filepath.Abs(s.cfg.AudioDir)
+	if err != nil {
+		http.Error(w, "audio_dir resolve failed", http.StatusInternalServerError)
+		return
+	}
+
+	type entry struct {
+		Path  string `json:"path"`
+		MTime int64  `json:"mtime"`
+	}
+	maxByDir := map[string]int64{}
+
+	walkErr := filepath.WalkDir(rootAbs, func(p string, d os.DirEntry, err error) error {
+		if err != nil {
+			return nil // skip unreadable entries; don't fail the whole walk
+		}
+		if d.IsDir() {
+			return nil
+		}
+		if !isAudioFile(d.Name()) {
+			return nil
+		}
+		info, err := d.Info()
+		if err != nil {
+			return nil
+		}
+		dir := filepath.Dir(p)
+		mt := info.ModTime().Unix()
+		if existing, ok := maxByDir[dir]; !ok || mt > existing {
+			maxByDir[dir] = mt
+		}
+		return nil
+	})
+	if walkErr != nil {
+		log.Printf("album-mtimes walk error: %v", walkErr)
+	}
+
+	out := make([]entry, 0, len(maxByDir))
+	for path, mt := range maxByDir {
+		out = append(out, entry{Path: path, MTime: mt})
+	}
+	w.Header().Set("Content-Type", "application/json")
+	_ = json.NewEncoder(w).Encode(out)
 }
 
 func logRequests(next http.Handler) http.Handler {

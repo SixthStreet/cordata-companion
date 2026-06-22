@@ -20,7 +20,7 @@ Raspberry Pi, Mac mini — anywhere your music lives).
 ```bash
 # Linux amd64
 curl -L -o cordata-companion \
-  https://github.com/SixthStreet/cordata-companion/releases/latest/download/cordata-companion-0.1.0-linux-amd64
+  https://github.com/SixthStreet/cordata-companion/releases/latest/download/cordata-companion-0.2.0-linux-amd64
 chmod +x cordata-companion
 sudo mv cordata-companion /usr/local/bin/
 ```
