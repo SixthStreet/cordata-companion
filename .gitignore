@@ -1,0 +1,5 @@
+cordata-companion
+dist/
+*.test
+*.out
+.DS_Store
