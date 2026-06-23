@@ -31,6 +31,10 @@ func (s *server) run(ctx context.Context) error {
 	mux.HandleFunc("/waveform", s.requireAuth(s.handleWaveform))
 	mux.HandleFunc("/version", s.requireAuth(s.handleVersion))
 	mux.HandleFunc("/album-mtimes", s.requireAuth(s.handleAlbumMTimes))
+	mux.HandleFunc("/tags", s.requireAuth(s.handleTags))
+	mux.HandleFunc("/artwork", s.requireAuth(s.handleArtwork))
+	mux.HandleFunc("/dr", s.requireAuth(s.handleDR))
+	mux.HandleFunc("/fingerprint", s.requireAuth(s.handleFingerprint))
 
 	srv := &http.Server{
 		Addr:              s.cfg.BindAddress,
@@ -80,10 +84,10 @@ func (s *server) handleHealth(w http.ResponseWriter, _ *http.Request) {
 func (s *server) handleVersion(w http.ResponseWriter, _ *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 	resp := map[string]any{
-		"version":      version,
-		"buckets":      s.computer.buckets,
-		"audio_dir":    s.cfg.AudioDir,
-		"cache_dir":    s.cfg.CacheDir,
+		"version":   version,
+		"buckets":   s.computer.buckets,
+		"audio_dir": s.cfg.AudioDir,
+		"cache_dir": s.cfg.CacheDir,
 	}
 	_ = json.NewEncoder(w).Encode(resp)
 }

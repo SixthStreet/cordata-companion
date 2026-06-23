@@ -38,6 +38,13 @@ type config struct {
 	// FfmpegPath lets sites with ffmpeg in a non-standard location point
 	// at the binary. Defaults to `ffmpeg` (looked up via $PATH).
 	FfmpegPath string
+
+	// FpcalcPath points at the Chromaprint `fpcalc` binary used for
+	// acoustic fingerprinting (the `/fingerprint` endpoint). Install via
+	// `apt install libchromaprint-tools` on Debian/Ubuntu or
+	// `brew install chromaprint` on macOS. Defaults to `fpcalc` (looked
+	// up via $PATH).
+	FpcalcPath string
 }
 
 // loadConfig parses a tiny hand-rolled `key = value` config. We avoid
@@ -47,6 +54,7 @@ func loadConfig(path string) (*config, error) {
 	cfg := &config{
 		BindAddress: ":9089",
 		FfmpegPath:  "ffmpeg",
+		FpcalcPath:  "fpcalc",
 	}
 
 	bytes, err := os.ReadFile(path)
@@ -88,6 +96,8 @@ func loadConfig(path string) (*config, error) {
 			cfg.BearerToken = v
 		case "ffmpeg_path":
 			cfg.FfmpegPath = v
+		case "fpcalc_path":
+			cfg.FpcalcPath = v
 		default:
 			return nil, fmt.Errorf("unknown config key %q", k)
 		}
@@ -134,6 +144,7 @@ cache_dir    = ""                       # defaults to ~/.cache/cordata-companion
 bind_address = ":9089"                  # host:port the HTTP server listens on
 bearer_token = "%s"  # generated on first run — paste into Cordata Settings
 ffmpeg_path  = "ffmpeg"                 # override only if ffmpeg lives elsewhere
+fpcalc_path  = "fpcalc"                 # Chromaprint fpcalc; install libchromaprint-tools
 `, tok)
 	return os.WriteFile(path, []byte(body), 0o600)
 }
