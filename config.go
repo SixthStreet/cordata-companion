@@ -57,6 +57,13 @@ type config struct {
 	// Debian/Ubuntu or `brew install sox` on macOS. Defaults to `sox`
 	// (looked up via $PATH).
 	SoxPath string
+
+	// KeyfinderPath points at the `keyfinder-cli` binary used for
+	// musical-key detection (the `/key` endpoint). Install via
+	// `apt install keyfinder-cli` on Debian/Ubuntu or `brew install
+	// keyfinder-cli` on macOS. Defaults to `keyfinder-cli` (looked up
+	// via $PATH).
+	KeyfinderPath string
 }
 
 // loadConfig parses a tiny hand-rolled `key = value` config. We avoid
@@ -64,11 +71,12 @@ type config struct {
 // five keys, all strings, and that's not worth a dependency.
 func loadConfig(path string) (*config, error) {
 	cfg := &config{
-		BindAddress: ":9089",
-		FfmpegPath:  "ffmpeg",
-		FpcalcPath:  "fpcalc",
-		BpmPath:     "bpm",
-		SoxPath:     "sox",
+		BindAddress:   ":9089",
+		FfmpegPath:    "ffmpeg",
+		FpcalcPath:    "fpcalc",
+		BpmPath:       "bpm",
+		SoxPath:       "sox",
+		KeyfinderPath: "keyfinder-cli",
 	}
 
 	bytes, err := os.ReadFile(path)
@@ -116,6 +124,8 @@ func loadConfig(path string) (*config, error) {
 			cfg.BpmPath = v
 		case "sox_path":
 			cfg.SoxPath = v
+		case "keyfinder_path":
+			cfg.KeyfinderPath = v
 		default:
 			return nil, fmt.Errorf("unknown config key %q", k)
 		}
@@ -165,6 +175,7 @@ ffmpeg_path  = "ffmpeg"                 # override only if ffmpeg lives elsewher
 fpcalc_path  = "fpcalc"                 # Chromaprint fpcalc; install libchromaprint-tools
 bpm_path     = "bpm"                    # bpm-tools; install bpm-tools
 sox_path     = "sox"                    # sox; install sox (for spectrograms)
+keyfinder_path = "keyfinder-cli"        # musical-key detection; install keyfinder-cli
 `, tok)
 	return os.WriteFile(path, []byte(body), 0o600)
 }

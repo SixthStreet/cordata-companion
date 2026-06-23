@@ -38,6 +38,7 @@ func (s *server) run(ctx context.Context) error {
 	mux.HandleFunc("/bpm", s.requireAuth(s.handleBPM))
 	mux.HandleFunc("/spectrogram", s.requireAuth(s.handleSpectrogram))
 	mux.HandleFunc("/provenance", s.requireAuth(s.handleProvenance))
+	mux.HandleFunc("/key", s.requireAuth(s.handleKey))
 
 	srv := &http.Server{
 		Addr:              s.cfg.BindAddress,

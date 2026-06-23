@@ -99,6 +99,54 @@ func computeBPM(ctx context.Context, ffmpegPath, bpmPath, path string) (*bpmResu
 	return &bpmResult{Version: 1, BPM: val}, nil
 }
 
+// ---------- /key ----------
+
+// handleKey answers `GET /key?path=...`. Wraps keyfinder-cli (from the
+// libkeyfinder/keyfinder-cli project) to detect the musical key of a
+// track. Cordata surfaces this alongside BPM for DJ-style energy
+// matching in Smart Mixes.
+//
+// keyfinder-cli's default output is a short string ("A min", "11A",
+// "Ebm"). We pass it through verbatim — Cordata decides whether to
+// render in Camelot notation or standard.
+type keyResult struct {
+	Version int    `json:"version"`
+	Key     string `json:"key"`
+}
+
+func (s *server) handleKey(w http.ResponseWriter, r *http.Request) {
+	abs, ok := s.validatedPath(w, r)
+	if !ok {
+		return
+	}
+
+	ctx, cancel := context.WithTimeout(r.Context(), 60*time.Second)
+	defer cancel()
+
+	res, err := computeKey(ctx, s.cfg.KeyfinderPath, abs)
+	if err != nil {
+		http.Error(w, "key failed: "+err.Error(), http.StatusInternalServerError)
+		return
+	}
+	w.Header().Set("Content-Type", "application/json")
+	_ = json.NewEncoder(w).Encode(res)
+}
+
+func computeKey(ctx context.Context, keyfinderPath, path string) (*keyResult, error) {
+	cmd := exec.CommandContext(ctx, keyfinderPath, path)
+	var stdout, stderr bytes.Buffer
+	cmd.Stdout = &stdout
+	cmd.Stderr = &stderr
+	if err := cmd.Run(); err != nil {
+		return nil, fmt.Errorf("keyfinder-cli: %w (stderr: %s)", err, stderr.String())
+	}
+	out := strings.TrimSpace(stdout.String())
+	if out == "" {
+		return nil, fmt.Errorf("keyfinder-cli produced no output")
+	}
+	return &keyResult{Version: 1, Key: out}, nil
+}
+
 // ---------- /spectrogram ----------
 
 // handleSpectrogram answers `GET /spectrogram?path=...&width=...&height=...`.
