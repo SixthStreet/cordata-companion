@@ -45,6 +45,18 @@ type config struct {
 	// `brew install chromaprint` on macOS. Defaults to `fpcalc` (looked
 	// up via $PATH).
 	FpcalcPath string
+
+	// BpmPath points at the `bpm` binary from bpm-tools, used for tempo
+	// detection (the `/bpm` endpoint). Install via `apt install
+	// bpm-tools` on Debian/Ubuntu or `brew install bpm-tools` on macOS.
+	// Defaults to `bpm` (looked up via $PATH).
+	BpmPath string
+
+	// SoxPath points at the `sox` binary used for spectrogram rendering
+	// (the `/spectrogram` endpoint). Install via `apt install sox` on
+	// Debian/Ubuntu or `brew install sox` on macOS. Defaults to `sox`
+	// (looked up via $PATH).
+	SoxPath string
 }
 
 // loadConfig parses a tiny hand-rolled `key = value` config. We avoid
@@ -55,6 +67,8 @@ func loadConfig(path string) (*config, error) {
 		BindAddress: ":9089",
 		FfmpegPath:  "ffmpeg",
 		FpcalcPath:  "fpcalc",
+		BpmPath:     "bpm",
+		SoxPath:     "sox",
 	}
 
 	bytes, err := os.ReadFile(path)
@@ -98,6 +112,10 @@ func loadConfig(path string) (*config, error) {
 			cfg.FfmpegPath = v
 		case "fpcalc_path":
 			cfg.FpcalcPath = v
+		case "bpm_path":
+			cfg.BpmPath = v
+		case "sox_path":
+			cfg.SoxPath = v
 		default:
 			return nil, fmt.Errorf("unknown config key %q", k)
 		}
@@ -145,6 +163,8 @@ bind_address = ":9089"                  # host:port the HTTP server listens on
 bearer_token = "%s"  # generated on first run — paste into Cordata Settings
 ffmpeg_path  = "ffmpeg"                 # override only if ffmpeg lives elsewhere
 fpcalc_path  = "fpcalc"                 # Chromaprint fpcalc; install libchromaprint-tools
+bpm_path     = "bpm"                    # bpm-tools; install bpm-tools
+sox_path     = "sox"                    # sox; install sox (for spectrograms)
 `, tok)
 	return os.WriteFile(path, []byte(body), 0o600)
 }
