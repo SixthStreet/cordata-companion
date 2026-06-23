@@ -1,7 +1,7 @@
 .PHONY: build release clean fmt vet test run
 
 BIN := cordata-companion
-VERSION := 0.4.1
+VERSION := 0.4.2
 LDFLAGS := -s -w -X main.version=$(VERSION)
 
 build:

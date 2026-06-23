@@ -265,11 +265,16 @@ func computeProvenance(ctx context.Context, ffmpegPath, path string) (*provenanc
 	if measureRate > 0 {
 		decodeRate = strconv.Itoa(measureRate)
 	}
+	// Pull just channel 0 with `pan=mono|c0=c0` instead of `-ac 1`. A
+	// proper mono downmix averages L and R, which sets several low
+	// bits in the s32 output and inflates the measured bit depth. We
+	// only need one channel's samples for bit-depth analysis + rolloff
+	// — they're independent measurements per channel.
 	decode := exec.CommandContext(ctx, ffmpegPath,
 		"-hide_banner", "-loglevel", "error",
 		"-i", path,
 		"-map", "a:0",
-		"-ac", "1",
+		"-af", "pan=mono|c0=c0",
 		"-f", "s32le",
 		"-ar", decodeRate,
 		"-",
