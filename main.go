@@ -21,7 +21,7 @@ import (
 	"syscall"
 )
 
-const version = "0.4.0"
+const version = "0.4.1"
 
 func main() {
 	configPath := flag.String("config", defaultConfigPath(), "Path to TOML config file")

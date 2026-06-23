@@ -52,14 +52,16 @@ func (s *server) handleBPM(w http.ResponseWriter, r *http.Request) {
 }
 
 func computeBPM(ctx context.Context, ffmpegPath, bpmPath, path string) (*bpmResult, error) {
-	// bpm-tools `bpm` reads 16-bit signed little-endian mono PCM at
-	// any sample rate from stdin. We feed ffmpeg's decode straight in.
+	// bpm-tools `bpm` reads 32-bit float mono PCM at 44.1 kHz from
+	// stdin (Debian package default). We feed ffmpeg's decode straight
+	// in. Earlier versions of this code used s16le and got 0-byte
+	// responses because bpm silently mis-parses int data as floats.
 	decode := exec.CommandContext(ctx, ffmpegPath,
 		"-hide_banner", "-loglevel", "error",
 		"-i", path,
 		"-map", "a:0",
 		"-ac", "1",
-		"-f", "s16le",
+		"-f", "f32le",
 		"-ar", "44100",
 		"-",
 	)
@@ -368,9 +370,18 @@ func analyzeSamples(r io.Reader, sampleRate int) (effectiveBits int, rolloffHz f
 			}
 		}
 		// s32 sample uses bits 0..31; if lowest set is at position L,
-		// effective depth is 32 - L.
-		effectiveBits = 32 - lowest
-		if effectiveBits > 32 {
+		// effective depth is 32 - L. Snap to canonical depths so 1-LSB
+		// noise from the ffmpeg stereo→mono downmix doesn't surface as
+		// "17 bits" on what's really a 16-bit file.
+		raw := 32 - lowest
+		switch {
+		case raw <= 16:
+			effectiveBits = 16
+		case raw <= 20:
+			effectiveBits = 20
+		case raw <= 24:
+			effectiveBits = 24
+		default:
 			effectiveBits = 32
 		}
 	}
